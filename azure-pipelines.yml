@@ -1,62 +1,76 @@
 trigger:
 - main
 
+# Variables seguras en Azure DevOps:
+#  - TP7-Variables  (SONAR_PROJECT_KEY, SONAR_ORG, SONAR_TOKEN)
 variables:
-- group: TP7-Variables   # SOLO SONAR_TOKEN adentro
+- group: TP7-Variables
 
 pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-# 1) Instalar Node.js
+# Siempre conviene hacer checkout explícito
+- checkout: self
+
+# 1) Usar Node 20
 - task: UseNode@1
+  displayName: 'Use Node.js 20'
   inputs:
     version: '20.x'
     checkLatest: true
 
-# 2) Backend - instalar deps
+# 2) Backend - instalar dependencias
 - script: |
     cd backend
-    npm install
-  displayName: "Instalar dependencias del backend"
+    npm ci
+  displayName: 'Instalar dependencias backend'
 
 # 3) Backend - tests + coverage
 - script: |
     cd backend
     npm test -- --coverage
-  displayName: "Ejecutar tests backend"
+  displayName: 'Ejecutar tests backend'
 
-# 4) Frontend - instalar deps
+# 4) Frontend - instalar dependencias
 - script: |
     cd frontend
-    npm install
-  displayName: "Instalar dependencias frontend"
+    npm ci
+  displayName: 'Instalar dependencias frontend'
 
 # 5) Frontend - tests + coverage
 - script: |
     cd frontend
     npm test -- --coverage
-  displayName: "Ejecutar tests frontend"
+  displayName: 'Ejecutar tests frontend'
 
-# 6) SonarCloud - análisis con SonarScanner CLI (proyecto JS, no .NET)
+# 6) SonarCloud - análisis con SonarScanner CLI
 - task: Bash@3
-  displayName: "SonarCloud - análisis"
+  displayName: 'SonarCloud - análisis'
   inputs:
-    targetType: inline
+    targetType: 'inline'
     script: |
-      # Descargar SonarScanner CLI
-      SCANNER_VERSION=5.0.1.3006
-      SCANNER_DIR="sonar-scanner-$SCANNER_VERSION-linux"
+      set -e
 
-      wget -qO sonar-scanner.zip "https://github.com/SonarSource/sonar-scanner-cli/releases/download/v$SCANNER_VERSION/sonar-scanner-cli-$SCANNER_VERSION-linux.zip"
-      unzip -q sonar-scanner.zip
-      export PATH="$PATH:$(pwd)/$SCANNER_DIR/bin"
+      echo "Descargando SonarScanner CLI..."
+      # Descargamos una versión concreta del sonar-scanner CLI para Linux
+      curl -sSLo $HOME/sonar-scanner.zip \
+        https://github.com/SonarSource/sonar-scanner-cli/releases/download/5.0.1.3006/sonar-scanner-cli-5.0.1.3006-linux.zip
+
+      echo "Descomprimiendo SonarScanner..."
+      mkdir -p $HOME/.sonar
+      unzip -q $HOME/sonar-scanner.zip -d $HOME/.sonar
+
+      # Agregamos el binario al PATH
+      export PATH="$HOME/.sonar/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
+
+      echo "Versión de sonar-scanner:"
+      sonar-scanner -v
 
       echo "Ejecutando análisis SonarCloud..."
-
       sonar-scanner \
-        -Dsonar.projectKey=Cervellini2501_TP7-IngSoftIII \
-        -Dsonar.organization=cervellini2501 \
         -Dsonar.host.url=https://sonarcloud.io \
-        -Dsonar.token="$(SONAR_TOKEN)" \
-        -Dsonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
+        -Dsonar.organization=$(SONAR_ORG) \
+        -Dsonar.projectKey=$(SONAR_PROJECT_KEY) \
+        -Dsonar.token=$(SONAR_TOKEN) \
+        -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
