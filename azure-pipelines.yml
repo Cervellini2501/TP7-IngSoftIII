@@ -1,8 +1,6 @@
 trigger:
 - main
 
-# Variables seguras en Azure DevOps:
-#  - TP7-Variables  (SONAR_PROJECT_KEY, SONAR_ORG, SONAR_TOKEN)
 variables:
 - group: TP7-Variables
 
@@ -10,17 +8,14 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-# Siempre conviene hacer checkout explícito
-- checkout: self
-
-# 1) Usar Node 20
+# 1) Node
 - task: UseNode@1
   displayName: 'Use Node.js 20'
   inputs:
     version: '20.x'
     checkLatest: true
 
-# 2) Backend - instalar dependencias
+# 2) Backend - deps
 - script: |
     cd backend
     npm ci
@@ -32,7 +27,7 @@ steps:
     npm test -- --coverage
   displayName: 'Ejecutar tests backend'
 
-# 4) Frontend - instalar dependencias
+# 4) Frontend - deps
 - script: |
     cd frontend
     npm ci
@@ -45,32 +40,24 @@ steps:
   displayName: 'Ejecutar tests frontend'
 
 # 6) SonarCloud - análisis con SonarScanner CLI
-- task: Bash@3
+- script: |
+    set -e
+
+    echo "Descargando SonarScanner CLI..."
+    curl -sSLo sonar-scanner.zip \
+      https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+
+    echo "Descomprimiendo SonarScanner..."
+    unzip -q sonar-scanner.zip
+
+    # Añadimos el binario al PATH
+    export PATH="$PATH:$(pwd)/sonar-scanner-5.0.1.3006-linux/bin"
+
+    echo "Ejecutando análisis SonarCloud..."
+    sonar-scanner \
+      -Dsonar.host.url=https://sonarcloud.io \
+      -Dsonar.organization=$(SONAR_ORG) \
+      -Dsonar.projectKey=$(SONAR_PROJECT_KEY) \
+      -Dsonar.token=$(SONAR_TOKEN) \
+      -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
   displayName: 'SonarCloud - análisis'
-  inputs:
-    targetType: 'inline'
-    script: |
-      set -e
-
-      echo "Descargando SonarScanner CLI..."
-      # Descargamos una versión concreta del sonar-scanner CLI para Linux
-      curl -sSLo $HOME/sonar-scanner.zip \
-        https://github.com/SonarSource/sonar-scanner-cli/releases/download/5.0.1.3006/sonar-scanner-cli-5.0.1.3006-linux.zip
-
-      echo "Descomprimiendo SonarScanner..."
-      mkdir -p $HOME/.sonar
-      unzip -q $HOME/sonar-scanner.zip -d $HOME/.sonar
-
-      # Agregamos el binario al PATH
-      export PATH="$HOME/.sonar/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
-
-      echo "Versión de sonar-scanner:"
-      sonar-scanner -v
-
-      echo "Ejecutando análisis SonarCloud..."
-      sonar-scanner \
-        -Dsonar.host.url=https://sonarcloud.io \
-        -Dsonar.organization=$(SONAR_ORG) \
-        -Dsonar.projectKey=$(SONAR_PROJECT_KEY) \
-        -Dsonar.token=$(SONAR_TOKEN) \
-        -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
