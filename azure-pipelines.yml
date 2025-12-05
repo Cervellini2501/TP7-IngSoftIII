@@ -2,7 +2,7 @@ trigger:
 - main
 
 variables:
-- group: TP7-Variables   # SONAR_PROJECT_KEY, SONAR_ORG, SONAR_TOKEN
+- group: TP7-Variables   # SOLO SONAR_TOKEN adentro
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -52,14 +52,13 @@ steps:
   inputs:
     targetType: inline
     script: |
-      # agregar el tool al PATH
       export PATH="$PATH:$HOME/.dotnet/tools"
 
-      echo "Usando SonarCloud con PROJECT_KEY=$(SONAR_PROJECT_KEY) y ORG=$(SONAR_ORG)"
+      echo "Usando SonarCloud con PROJECT_KEY=Cervellini2501_TP7-IngSoftIII y ORG=cervellini2501"
 
       dotnet sonarscanner begin \
-        /k:"$(SONAR_PROJECT_KEY)" \
-        /o:"$(SONAR_ORG)" \
+        /k:"Cervellini2501_TP7-IngSoftIII" \
+        /o:"cervellini2501" \
         /d:sonar.host.url="https://sonarcloud.io" \
         /d:sonar.token="$(SONAR_TOKEN)" \
         /d:sonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
