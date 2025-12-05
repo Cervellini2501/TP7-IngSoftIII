@@ -11,7 +11,8 @@ steps:
 # 1) Instalar Node.js
 - task: UseNode@1
   inputs:
-    version: '18.x'
+    version: '20.x'
+    checkLatest: true
 
 # 2) Backend - instalar deps
 - script: |
