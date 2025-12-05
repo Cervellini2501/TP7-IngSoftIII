@@ -3,7 +3,7 @@ const controller = require("../controllers/palabrasController");
 
 const router = express.Router();
 
-// ⚠️ Importante: las rutas específicas van ANTES de "/:id"
+// Rutas específicas primero
 
 // GET /api/palabras/stats
 router.get("/stats/todo", controller.obtenerStats);
@@ -20,7 +20,7 @@ router.post("/", controller.crear);
 // PUT /api/palabras/:id
 router.put("/:id", controller.actualizar);
 
-// DELETE /api/palabras/:id  (soft delete)
+// DELETE /api/palabras/:id
 router.delete("/:id", controller.eliminar);
 
 // POST /api/palabras/:id/favorita
@@ -28,6 +28,5 @@ router.post("/:id/favorita", controller.marcarFavorita);
 
 // POST /api/palabras/:id/usar
 router.post("/:id/usar", controller.registrarUso);
-
 
 module.exports = router;

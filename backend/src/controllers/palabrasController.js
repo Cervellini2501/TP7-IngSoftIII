@@ -11,7 +11,7 @@ async function listar(req, res) {
     };
 
     const resultado = await service.listarPalabras(filtros);
-    res.json(resultado);
+    res.status(200).json(resultado);
   } catch (err) {
     console.error("Error en listar:", err);
     res.status(500).json({ error: "Error al listar palabras" });
