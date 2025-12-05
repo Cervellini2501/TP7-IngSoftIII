@@ -52,21 +52,17 @@ steps:
   inputs:
     targetType: inline
     script: |
-      # Aseguro que el tool esté en el PATH
+      # agregar el tool al PATH
       export PATH="$PATH:$HOME/.dotnet/tools"
 
-      echo "Usando SonarCloud con PROJECT_KEY=$SONAR_PROJECT_KEY y ORG=$SONAR_ORG"
+      echo "Usando SonarCloud con PROJECT_KEY=$(SONAR_PROJECT_KEY) y ORG=$(SONAR_ORG)"
 
       dotnet sonarscanner begin \
-        /k:"$SONAR_PROJECT_KEY" \
-        /o:"$SONAR_ORG" \
+        /k:"$(SONAR_PROJECT_KEY)" \
+        /o:"$(SONAR_ORG)" \
         /d:sonar.host.url="https://sonarcloud.io" \
-        /d:sonar.token="$SONAR_TOKEN" \
+        /d:sonar.token="$(SONAR_TOKEN)" \
         /d:sonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
-  env:
-    SONAR_PROJECT_KEY: $(SONAR_PROJECT_KEY)
-    SONAR_ORG: $(SONAR_ORG)
-    SONAR_TOKEN: $(SONAR_TOKEN)
 
 # 8) Build vacío (obligatorio para cerrar el análisis)
 - task: Bash@3
@@ -83,6 +79,4 @@ steps:
     targetType: inline
     script: |
       export PATH="$PATH:$HOME/.dotnet/tools"
-      dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
-  env:
-    SONAR_TOKEN: $(SONAR_TOKEN)
+      dotnet sonarscanner end /d:sonar.token="$(SONAR_TOKEN)"
