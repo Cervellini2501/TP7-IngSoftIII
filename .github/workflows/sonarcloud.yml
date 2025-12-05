@@ -8,18 +8,21 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build:
+  sonarcloud:
     name: Analyze with SonarCloud
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read          # necesario para leer el código
+      pull-requests: write    # para que Sonar comente en los PR
+
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # Sonar necesita todo el historial para algunas features
 
-      # Install Node (backend y frontend)
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
