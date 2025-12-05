@@ -1,85 +1,62 @@
 trigger:
 - main
 
+variables:
+- group: TP7-Variables
+
 pool:
   vmImage: 'ubuntu-latest'
 
-variables:
-- group: TP7-Variables   # Aquí se toma SONAR_TOKEN desde tu Variable Group
-
 steps:
-# -----------------------------
-# CHECKOUT
-# -----------------------------
-- checkout: self
-  fetchDepth: 0
-
-# -----------------------------
-# SONARCLOUD - PREPARACIÓN
-# -----------------------------
-- task: SonarCloudPrepare@1
+# 1) Instalar Node.js
+- task: UseNode@1
   inputs:
-    SonarCloud: 'SonarCloud'
-    organization: 'cervellini2501'
-    scannerMode: 'Other'
-    configMode: 'file'
-    configFile: 'sonar-project.properties'
-  env:
-    SONAR_TOKEN: $(SONAR_TOKEN)
+    version: '18.x'
 
-# -----------------------------
-# BACKEND – INSTALAR DEPENDENCIAS
-# -----------------------------
+# 2) Backend - instalar deps
 - script: |
     cd backend
     npm install
-  displayName: "Backend: instalar dependencias"
+  displayName: "Instalar dependencias del backend"
 
-# -----------------------------
-# BACKEND – TESTS CON COBERTURA
-# -----------------------------
+# 3) Backend - tests + coverage
 - script: |
     cd backend
     npm test -- --coverage
-  displayName: "Backend: ejecutar tests con coverage"
+  displayName: "Ejecutar tests backend"
 
-# -----------------------------
-# FRONTEND – INSTALAR DEPENDENCIAS
-# -----------------------------
+# 4) Frontend - instalar deps
 - script: |
     cd frontend
     npm install
-  displayName: "Frontend: instalar dependencias"
+  displayName: "Instalar dependencias frontend"
 
-# -----------------------------
-# FRONTEND – TESTS CON COBERTURA
-# -----------------------------
+# 5) Frontend - tests + coverage
 - script: |
     cd frontend
     npm test -- --coverage
-  displayName: "Frontend: ejecutar tests con coverage"
+  displayName: "Ejecutar tests frontend"
 
-# -----------------------------
-# PUBLICAR REPORTES DE COBERTURA
-# -----------------------------
-- task: PublishCodeCoverageResults@1
-  inputs:
-    codeCoverageTool: Cobertura
-    summaryFileLocation: |
-      backend/coverage/cobertura-coverage.xml
-      frontend/coverage/cobertura-coverage.xml
-    reportDirectory: |
-      backend/coverage
-      frontend/coverage
-  displayName: "Publicar reportes de cobertura"
+# 6) Descargar SonarScanner
+- script: |
+    dotnet tool install --global dotnet-sonarscanner
+  displayName: "Instalar SonarScanner"
 
-# -----------------------------
-# SONARCLOUD – ANALISIS FINAL
-# -----------------------------
-- task: SonarCloudAnalyze@1
-  displayName: "SonarCloud: ejecutar análisis"
+# 7) SonarCloud - BEGIN
+- script: |
+    dotnet-sonarscanner begin \
+      /k:"$(SONAR_PROJECT_KEY)" \
+      /o:"$(SONAR_ORG)" \
+      /d:sonar.token="$(SONAR_TOKEN)" \
+      /d:sonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
+  displayName: "SonarCloud BEGIN"
 
-- task: SonarCloudPublish@1
-  inputs:
-    pollingTimeoutSec: '300'
-  displayName: "SonarCloud: publicar resultados"
+# 8) Build vacío (obligatorio para cerrar el análisis)
+- script: |
+    echo "Build necesario para SonarScanner"
+  displayName: "Fake build"
+
+# 9) SonarCloud - END
+- script: |
+    dotnet-sonarscanner end /d:sonar.token="$(SONAR_TOKEN)"
+  displayName: "SonarCloud END"
