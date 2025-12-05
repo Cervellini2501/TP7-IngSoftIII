@@ -38,44 +38,25 @@ steps:
     npm test -- --coverage
   displayName: "Ejecutar tests frontend"
 
-# 6) Instalar SonarScanner (.NET global tool)
+# 6) SonarCloud - análisis con SonarScanner CLI (proyecto JS, no .NET)
 - task: Bash@3
-  displayName: "Instalar SonarScanner"
+  displayName: "SonarCloud - análisis"
   inputs:
     targetType: inline
     script: |
-      dotnet tool install --global dotnet-sonarscanner
+      # Descargar SonarScanner CLI
+      SCANNER_VERSION=5.0.1.3006
+      SCANNER_DIR="sonar-scanner-$SCANNER_VERSION-linux"
 
-# 7) SonarCloud - BEGIN
-- task: Bash@3
-  displayName: "SonarCloud BEGIN"
-  inputs:
-    targetType: inline
-    script: |
-      export PATH="$PATH:$HOME/.dotnet/tools"
+      wget -qO sonar-scanner.zip "https://github.com/SonarSource/sonar-scanner-cli/releases/download/v$SCANNER_VERSION/sonar-scanner-cli-$SCANNER_VERSION-linux.zip"
+      unzip -q sonar-scanner.zip
+      export PATH="$PATH:$(pwd)/$SCANNER_DIR/bin"
 
-      echo "Usando SonarCloud con PROJECT_KEY=Cervellini2501_TP7-IngSoftIII y ORG=cervellini2501"
+      echo "Ejecutando análisis SonarCloud..."
 
-      dotnet sonarscanner begin \
-        /k:"Cervellini2501_TP7-IngSoftIII" \
-        /o:"cervellini2501" \
-        /d:sonar.host.url="https://sonarcloud.io" \
-        /d:sonar.token="$(SONAR_TOKEN)" \
-        /d:sonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
-
-# 8) Build vacío (obligatorio para cerrar el análisis)
-- task: Bash@3
-  displayName: "Fake build"
-  inputs:
-    targetType: inline
-    script: |
-      echo "Build necesario para SonarScanner (no compila nada, solo cumple el paso)."
-
-# 9) SonarCloud - END
-- task: Bash@3
-  displayName: "SonarCloud END"
-  inputs:
-    targetType: inline
-    script: |
-      export PATH="$PATH:$HOME/.dotnet/tools"
-      dotnet sonarscanner end /d:sonar.token="$(SONAR_TOKEN)"
+      sonar-scanner \
+        -Dsonar.projectKey=Cervellini2501_TP7-IngSoftIII \
+        -Dsonar.organization=cervellini2501 \
+        -Dsonar.host.url=https://sonarcloud.io \
+        -Dsonar.token="$(SONAR_TOKEN)" \
+        -Dsonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
