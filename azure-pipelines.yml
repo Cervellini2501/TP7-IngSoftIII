@@ -1,0 +1,85 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+- group: TP7-Variables   # Aquí se toma SONAR_TOKEN desde tu Variable Group
+
+steps:
+# -----------------------------
+# CHECKOUT
+# -----------------------------
+- checkout: self
+  fetchDepth: 0
+
+# -----------------------------
+# SONARCLOUD - PREPARACIÓN
+# -----------------------------
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'SonarCloud'
+    organization: 'cervellini2501'
+    scannerMode: 'Other'
+    configMode: 'file'
+    configFile: 'sonar-project.properties'
+  env:
+    SONAR_TOKEN: $(SONAR_TOKEN)
+
+# -----------------------------
+# BACKEND – INSTALAR DEPENDENCIAS
+# -----------------------------
+- script: |
+    cd backend
+    npm install
+  displayName: "Backend: instalar dependencias"
+
+# -----------------------------
+# BACKEND – TESTS CON COBERTURA
+# -----------------------------
+- script: |
+    cd backend
+    npm test -- --coverage
+  displayName: "Backend: ejecutar tests con coverage"
+
+# -----------------------------
+# FRONTEND – INSTALAR DEPENDENCIAS
+# -----------------------------
+- script: |
+    cd frontend
+    npm install
+  displayName: "Frontend: instalar dependencias"
+
+# -----------------------------
+# FRONTEND – TESTS CON COBERTURA
+# -----------------------------
+- script: |
+    cd frontend
+    npm test -- --coverage
+  displayName: "Frontend: ejecutar tests con coverage"
+
+# -----------------------------
+# PUBLICAR REPORTES DE COBERTURA
+# -----------------------------
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: Cobertura
+    summaryFileLocation: |
+      backend/coverage/cobertura-coverage.xml
+      frontend/coverage/cobertura-coverage.xml
+    reportDirectory: |
+      backend/coverage
+      frontend/coverage
+  displayName: "Publicar reportes de cobertura"
+
+# -----------------------------
+# SONARCLOUD – ANALISIS FINAL
+# -----------------------------
+- task: SonarCloudAnalyze@1
+  displayName: "SonarCloud: ejecutar análisis"
+
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
+  displayName: "SonarCloud: publicar resultados"
