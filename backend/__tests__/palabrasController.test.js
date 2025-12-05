@@ -35,7 +35,7 @@ describe("palabrasController - listar", () => {
 
     await controller.listar(req, res);
 
-    // Tu controller arma filtros con texto/categoria/dificultad/idioma/soloFavoritas
+    // El controller arma filtros con texto/categoria/dificultad/idioma/soloFavoritas
     expect(service.listarPalabras).toHaveBeenCalledWith({
       texto: undefined,
       categoria: undefined,
@@ -44,7 +44,9 @@ describe("palabrasController - listar", () => {
       soloFavoritas: false,
     });
 
-    expect(res.status).not.toHaveBeenCalled();
+    // ✅ ESTA LÍNEA ES CLAVE
+    expect(res.status).toHaveBeenCalledWith(200);
+
     expect(res.json).toHaveBeenCalledWith([
       { id: 1, texto: "hola" },
       { id: 2, texto: "chau" },
@@ -121,7 +123,7 @@ describe("palabrasController - obtenerPorId", () => {
     await controller.obtenerPorId(req, res);
 
     expect(service.obtenerPalabra).toHaveBeenCalledWith(1);
-    // En tu controller NO seteás status en el caso OK, solo res.json
+    // En tu controller para OK usás solo res.json(...)
     expect(res.json).toHaveBeenCalledWith({ id: 1, texto: "hola" });
   });
 
