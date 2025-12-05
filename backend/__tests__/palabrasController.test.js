@@ -16,6 +16,7 @@ function mockRes() {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
+  res.send = jest.fn().mockReturnValue(res);
   return res;
 }
 
@@ -35,18 +36,15 @@ describe("palabrasController - listar", () => {
 
     await controller.listar(req, res);
 
-    // El controller arma filtros con texto/categoria/dificultad/idioma/soloFavoritas
     expect(service.listarPalabras).toHaveBeenCalledWith({
-      texto: undefined,
       categoria: undefined,
       dificultad: undefined,
       idioma: undefined,
       soloFavoritas: false,
+      texto: undefined,
     });
 
-    // ✅ ESTA LÍNEA ES CLAVE
     expect(res.status).toHaveBeenCalledWith(200);
-
     expect(res.json).toHaveBeenCalledWith([
       { id: 1, texto: "hola" },
       { id: 2, texto: "chau" },
@@ -92,7 +90,7 @@ describe("palabrasController - crear", () => {
     expect(res.json).toHaveBeenCalledWith(creada);
   });
 
-  test("devuelve 400 si el service tira error de validación", async () => {
+  test("devuelve status de error y detalles si el service tira error de validación", async () => {
     const req = { body: {} };
     const res = mockRes();
 
@@ -123,11 +121,10 @@ describe("palabrasController - obtenerPorId", () => {
     await controller.obtenerPorId(req, res);
 
     expect(service.obtenerPalabra).toHaveBeenCalledWith(1);
-    // En tu controller para OK usás solo res.json(...)
     expect(res.json).toHaveBeenCalledWith({ id: 1, texto: "hola" });
   });
 
-  test("devuelve 404 si la palabra no existe", async () => {
+  test("devuelve status del error si la palabra no existe", async () => {
     const req = { params: { id: "99" } };
     const res = mockRes();
 
@@ -140,6 +137,170 @@ describe("palabrasController - obtenerPorId", () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
       error: "Palabra no encontrada",
+    });
+  });
+});
+
+describe("palabrasController - actualizar", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  test("devuelve la palabra actualizada", async () => {
+    const req = { params: { id: "5" }, body: { texto: "nuevo" } };
+    const res = mockRes();
+
+    const actualizada = { id: 5, texto: "nuevo" };
+    service.actualizarPalabra.mockResolvedValue(actualizada);
+
+    await controller.actualizar(req, res);
+
+    expect(service.actualizarPalabra).toHaveBeenCalledWith(5, { texto: "nuevo" });
+    expect(res.json).toHaveBeenCalledWith(actualizada);
+  });
+
+  test("devuelve status del error y detalles si falla", async () => {
+    const req = { params: { id: "5" }, body: { texto: "" } };
+    const res = mockRes();
+
+    const err = new Error("Datos inválidos");
+    err.status = 400;
+    err.detalles = ["Texto requerido"];
+    service.actualizarPalabra.mockRejectedValue(err);
+
+    await controller.actualizar(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Datos inválidos",
+      detalles: ["Texto requerido"],
+    });
+  });
+});
+
+describe("palabrasController - eliminar", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  test("devuelve 204 cuando elimina", async () => {
+    const req = { params: { id: "3" } };
+    const res = mockRes();
+
+    service.eliminarPalabra.mockResolvedValue();
+
+    await controller.eliminar(req, res);
+
+    expect(service.eliminarPalabra).toHaveBeenCalledWith(3);
+    expect(res.status).toHaveBeenCalledWith(204);
+    expect(res.send).toHaveBeenCalled();
+  });
+
+  test("devuelve 500 si el service lanza error sin status", async () => {
+    const req = { params: { id: "3" } };
+    const res = mockRes();
+
+    const err = new Error("Fallo raro");
+    service.eliminarPalabra.mockRejectedValue(err);
+
+    await controller.eliminar(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Fallo raro",
+    });
+  });
+});
+
+describe("palabrasController - marcarFavorita", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  test("marca/desmarca favorita correctamente", async () => {
+    const req = { params: { id: "7" }, body: { esFavorita: true } };
+    const res = mockRes();
+
+    const actualizada = { id: 7, texto: "hola", esFavorita: true };
+    service.marcarFavorita.mockResolvedValue(actualizada);
+
+    await controller.marcarFavorita(req, res);
+
+    expect(service.marcarFavorita).toHaveBeenCalledWith(7, true);
+    expect(res.json).toHaveBeenCalledWith(actualizada);
+  });
+
+  test("devuelve status del error si falla", async () => {
+    const req = { params: { id: "7" }, body: { esFavorita: true } };
+    const res = mockRes();
+
+    const err = new Error("No encontrada");
+    err.status = 404;
+    service.marcarFavorita.mockRejectedValue(err);
+
+    await controller.marcarFavorita(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "No encontrada",
+    });
+  });
+});
+
+describe("palabrasController - registrarUso", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  test("devuelve palabra actualizada con uso registrado", async () => {
+    const req = { params: { id: "10" } };
+    const res = mockRes();
+
+    const actualizada = { id: 10, texto: "hola", usos: 5 };
+    service.registrarUso.mockResolvedValue(actualizada);
+
+    await controller.registrarUso(req, res);
+
+    expect(service.registrarUso).toHaveBeenCalledWith(10);
+    expect(res.json).toHaveBeenCalledWith(actualizada);
+  });
+
+  test("devuelve status del error si falla", async () => {
+    const req = { params: { id: "10" } };
+    const res = mockRes();
+
+    const err = new Error("No encontrada");
+    err.status = 404;
+    service.registrarUso.mockRejectedValue(err);
+
+    await controller.registrarUso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "No encontrada",
+    });
+  });
+});
+
+describe("palabrasController - obtenerStats", () => {
+  beforeEach(() => jest.resetAllMocks());
+
+  test("devuelve las estadísticas", async () => {
+    const req = {};
+    const res = mockRes();
+
+    const stats = { total: 10, favoritas: 3 };
+    service.obtenerStats.mockResolvedValue(stats);
+
+    await controller.obtenerStats(req, res);
+
+    expect(service.obtenerStats).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(stats);
+  });
+
+  test("devuelve 500 si el service lanza error", async () => {
+    const req = {};
+    const res = mockRes();
+
+    service.obtenerStats.mockRejectedValue(new Error("Error stats"));
+
+    await controller.obtenerStats(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Error al obtener estadísticas",
     });
   });
 });

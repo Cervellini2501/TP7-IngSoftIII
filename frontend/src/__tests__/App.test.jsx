@@ -2,49 +2,55 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import App from "../App";
 
-// Limpia y mockea fetch en cada test
+// Limpieza de mocks antes de cada test
 beforeEach(() => {
   vi.restoreAllMocks();
 });
 
+// -----------------------------------------------------------------------------
+// Layout básico
+// -----------------------------------------------------------------------------
 describe("App - layout básico", () => {
-  // Antes de cada test de este bloque, mockeamos fetch
   beforeEach(() => {
+    // mock de fetch para que el useEffect no rompa
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [], // devolvemos lista vacía
+      json: async () => [],
     });
   });
 
   test("muestra el título principal y el botón Recargar", async () => {
     render(<App />);
 
-    // El título principal
+    // Título principal
     expect(
       screen.getByRole("heading", { name: /gestión de palabras/i })
     ).toBeInTheDocument();
 
-    // Esperamos a que termine el fetch y el botón pase a decir "Recargar"
+    // Botón Recargar (aparece una vez que termina la carga inicial)
     const boton = await screen.findByRole("button", { name: /recargar/i });
     expect(boton).toBeInTheDocument();
   });
 });
 
-describe("App - integración básica con el backend (mockeado)", () => {
+// -----------------------------------------------------------------------------
+// Integración básica con backend (mockeado)
+// -----------------------------------------------------------------------------
+describe("App - integración básica con el backend", () => {
   test("al montar la App hace un fetch a /api/palabras", async () => {
-    const mockFetch = vi
-      .spyOn(global, "fetch")
-      .mockResolvedValue({
-        ok: true,
-        json: async () => [],
-      });
+    const mockFetch = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
 
     render(<App />);
 
+    // esperamos a que se haga al menos una llamada
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();
     });
 
+    // verificamos la URL
     const firstCallUrl = mockFetch.mock.calls[0][0];
     expect(firstCallUrl).toContain("/api/palabras");
   });
@@ -66,38 +72,41 @@ describe("App - integración básica con el backend (mockeado)", () => {
 
     render(<App />);
 
-    // esperamos a que aparezca el texto en pantalla
+    // esperamos a que se renderice el texto
     await waitFor(() => {
       expect(screen.getByText(/hola mundo/i)).toBeInTheDocument();
     });
   });
 
-test("al hacer clic en Recargar vuelve a llamar al backend", async () => {
-  const mockFetch = vi
-    .spyOn(global, "fetch")
-    .mockResolvedValue({
+  test("al hacer clic en Recargar vuelve a llamar al backend", async () => {
+    const mockFetch = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [
-        { id: 1, texto: "hola mundo", categoria: "general", dificultad: "facil", idioma: "es" },
+        {
+          id: 1,
+          texto: "hola mundo",
+          categoria: "general",
+          dificultad: "facil",
+          idioma: "es",
+        },
       ],
     });
 
-  render(<App />);
+    render(<App />);
 
-  // Esperamos a que se haga al menos un fetch al montar la App
-  await waitFor(() => {
-    expect(mockFetch).toHaveBeenCalled();
+    // esperamos la primera llamada (montaje)
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    const llamadasAntes = mockFetch.mock.calls.length;
+
+    const boton = screen.getByRole("button", { name: /recargar/i });
+    fireEvent.click(boton);
+
+    // esperamos a que aumente la cantidad de llamadas
+    await waitFor(() => {
+      expect(mockFetch.mock.calls.length).toBeGreaterThan(llamadasAntes);
+    });
   });
-
-  // Guardamos cuántas llamadas había antes de hacer clic en Recargar
-  const llamadasAntes = mockFetch.mock.calls.length;
-
-  const boton = screen.getByRole("button", { name: /recargar/i });
-  fireEvent.click(boton);
-
-  // Ahora esperamos a que el número de llamadas aumente
-  await waitFor(() => {
-    expect(mockFetch.mock.calls.length).toBeGreaterThan(llamadasAntes);
-  });
-});
 });
