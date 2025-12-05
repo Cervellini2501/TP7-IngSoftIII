@@ -43,7 +43,7 @@ jobs:
 
       - name: Run frontend tests + coverage
         working-directory: ./frontend
-        run: npm test -- --coverage
+        run: npm test
 
       # SonarCloud analysis
       - name: SonarCloud Scan
