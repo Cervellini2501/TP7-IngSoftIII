@@ -2,7 +2,7 @@ trigger:
 - main
 
 variables:
-- group: TP7-Variables
+- group: TP7-Variables   # SONAR_PROJECT_KEY, SONAR_ORG, SONAR_TOKEN
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -38,26 +38,51 @@ steps:
     npm test -- --coverage
   displayName: "Ejecutar tests frontend"
 
-# 6) Descargar SonarScanner
-- script: |
-    dotnet tool install --global dotnet-sonarscanner
+# 6) Instalar SonarScanner (.NET global tool)
+- task: Bash@3
   displayName: "Instalar SonarScanner"
+  inputs:
+    targetType: inline
+    script: |
+      dotnet tool install --global dotnet-sonarscanner
 
 # 7) SonarCloud - BEGIN
-- script: |
-    dotnet-sonarscanner begin \
-      /k:"$(SONAR_PROJECT_KEY)" \
-      /o:"$(SONAR_ORG)" \
-      /d:sonar.token="$(SONAR_TOKEN)" \
-      /d:sonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
+- task: Bash@3
   displayName: "SonarCloud BEGIN"
+  inputs:
+    targetType: inline
+    script: |
+      # Aseguro que el tool esté en el PATH
+      export PATH="$PATH:$HOME/.dotnet/tools"
+
+      echo "Usando SonarCloud con PROJECT_KEY=$SONAR_PROJECT_KEY y ORG=$SONAR_ORG"
+
+      dotnet sonarscanner begin \
+        /k:"$SONAR_PROJECT_KEY" \
+        /o:"$SONAR_ORG" \
+        /d:sonar.host.url="https://sonarcloud.io" \
+        /d:sonar.token="$SONAR_TOKEN" \
+        /d:sonar.javascript.lcov.reportPaths="backend/coverage/lcov.info,frontend/coverage/lcov.info"
+  env:
+    SONAR_PROJECT_KEY: $(SONAR_PROJECT_KEY)
+    SONAR_ORG: $(SONAR_ORG)
+    SONAR_TOKEN: $(SONAR_TOKEN)
 
 # 8) Build vacío (obligatorio para cerrar el análisis)
-- script: |
-    echo "Build necesario para SonarScanner"
+- task: Bash@3
   displayName: "Fake build"
+  inputs:
+    targetType: inline
+    script: |
+      echo "Build necesario para SonarScanner (no compila nada, solo cumple el paso)."
 
 # 9) SonarCloud - END
-- script: |
-    dotnet-sonarscanner end /d:sonar.token="$(SONAR_TOKEN)"
+- task: Bash@3
   displayName: "SonarCloud END"
+  inputs:
+    targetType: inline
+    script: |
+      export PATH="$PATH:$HOME/.dotnet/tools"
+      dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+  env:
+    SONAR_TOKEN: $(SONAR_TOKEN)
