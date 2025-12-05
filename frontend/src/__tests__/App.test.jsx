@@ -1,18 +1,24 @@
+// frontend/src/__tests__/App.test.jsx
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import App from "../App";
 
-// Limpieza de mocks antes de cada test
+// Limpia mocks antes de cada test
 beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-// -----------------------------------------------------------------------------
-// Layout básico
-// -----------------------------------------------------------------------------
+// -------------------------------------------------------------
+// 1) Layout básico
+// -------------------------------------------------------------
 describe("App - layout básico", () => {
   beforeEach(() => {
-    // mock de fetch para que el useEffect no rompa
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => [],
@@ -22,22 +28,20 @@ describe("App - layout básico", () => {
   test("muestra el título principal y el botón Recargar", async () => {
     render(<App />);
 
-    // Título principal
     expect(
       screen.getByRole("heading", { name: /gestión de palabras/i })
     ).toBeInTheDocument();
 
-    // Botón Recargar (aparece una vez que termina la carga inicial)
     const boton = await screen.findByRole("button", { name: /recargar/i });
     expect(boton).toBeInTheDocument();
   });
 });
 
-// -----------------------------------------------------------------------------
-// Integración básica con backend (mockeado)
-// -----------------------------------------------------------------------------
-describe("App - integración básica con el backend", () => {
-  test("al montar la App hace un fetch a /api/palabras", async () => {
+// -------------------------------------------------------------
+// 2) Integración básica con backend mockeado
+// -------------------------------------------------------------
+describe("App - integración básica con el backend (mockeado)", () => {
+  test("al montar la App hace fetch a /api/palabras", async () => {
     const mockFetch = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [],
@@ -45,14 +49,8 @@ describe("App - integración básica con el backend", () => {
 
     render(<App />);
 
-    // esperamos a que se haga al menos una llamada
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalled();
-    });
-
-    // verificamos la URL
-    const firstCallUrl = mockFetch.mock.calls[0][0];
-    expect(firstCallUrl).toContain("/api/palabras");
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+    expect(mockFetch.mock.calls[0][0]).toContain("/api/palabras");
   });
 
   test("muestra una palabra cuando el backend devuelve datos", async () => {
@@ -72,41 +70,121 @@ describe("App - integración básica con el backend", () => {
 
     render(<App />);
 
-    // esperamos a que se renderice el texto
-    await waitFor(() => {
-      expect(screen.getByText(/hola mundo/i)).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByText(/hola mundo/i)).toBeInTheDocument()
+    );
   });
 
-  test("al hacer clic en Recargar vuelve a llamar al backend", async () => {
-    const mockFetch = vi.spyOn(global, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => [
-        {
-          id: 1,
-          texto: "hola mundo",
-          categoria: "general",
-          dificultad: "facil",
-          idioma: "es",
-        },
-      ],
+  test("muestra un mensaje de error si fetch falla", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "Error al obtener palabras" }),
     });
 
     render(<App />);
 
-    // esperamos la primera llamada (montaje)
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByText(/error/i)).toBeInTheDocument()
+    );
+  });
+});
+
+// -------------------------------------------------------------
+// 3) Crear y eliminar palabras
+// -------------------------------------------------------------
+describe("App - creación y eliminación de palabras", () => {
+  test("permite crear una nueva palabra y mostrarla en pantalla", async () => {
+    // 1er fetch: lista inicial vacía
+    const mockFetch = vi.spyOn(global, "fetch");
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
     });
 
-    const llamadasAntes = mockFetch.mock.calls.length;
+    render(<App />);
 
-    const boton = screen.getByRole("button", { name: /recargar/i });
-    fireEvent.click(boton);
+    // Esperar carga inicial
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
-    // esperamos a que aumente la cantidad de llamadas
-    await waitFor(() => {
-      expect(mockFetch.mock.calls.length).toBeGreaterThan(llamadasAntes);
+    // Buscar sección "Nueva palabra"
+    const nuevaSection = screen
+      .getByRole("heading", { name: /nueva palabra/i })
+      .closest("section");
+
+    const dentroDeNueva = within(nuevaSection);
+
+    // Completar formulario
+    fireEvent.change(dentroDeNueva.getByLabelText(/texto/i), {
+      target: { value: "Prueba App" },
     });
+
+    fireEvent.change(dentroDeNueva.getAllByLabelText(/categoría/i)[0], {
+      target: { value: "general" },
+    });
+
+    // 2º fetch: respuesta del POST creando la palabra
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 99,
+        texto: "Prueba App",
+        categoria: "general",
+        dificultad: "facil",
+        idioma: "es",
+        esFavorita: false,
+      }),
+    });
+
+    // Enviar formulario
+    fireEvent.click(dentroDeNueva.getByRole("button", { name: /crear/i }));
+
+    // Validar que se muestra
+    await waitFor(() =>
+      expect(screen.getByText(/prueba app/i)).toBeInTheDocument()
+    );
+  });
+
+  test("permite eliminar una palabra", async () => {
+    // Mock de window.confirm para que devuelva TRUE
+    global.confirm = vi.fn(() => true);
+
+    const mockFetch = vi.spyOn(global, "fetch");
+
+    // 1er fetch: carga inicial con una palabra
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        {
+          id: 5,
+          texto: "Borrar esto",
+          categoria: "general",
+          dificultad: "facil",
+          idioma: "es",
+          esFavorita: false,
+        },
+      ],
+    });
+
+    // 2º fetch: DELETE exitoso
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      json: async () => ({}),
+    });
+
+    render(<App />);
+
+    // Asegurarnos de que la palabra está al principio
+    await waitFor(() =>
+      expect(screen.getByText(/borrar esto/i)).toBeInTheDocument()
+    );
+
+    const eliminarBtn = screen.getByRole("button", { name: /eliminar/i });
+    fireEvent.click(eliminarBtn);
+
+    // Ahora esperamos que ya no esté en el DOM
+    await waitFor(() =>
+      expect(screen.queryByText(/borrar esto/i)).not.toBeInTheDocument()
+    );
   });
 });
