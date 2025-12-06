@@ -9,8 +9,8 @@ export default defineConfig({
     setupFiles: "./src/setupTests.js",
     coverage: {
       provider: "v8",
-      reporter: ["text", "lcov"],
       reportsDirectory: "coverage",
+      reporter: ["text", "html", "lcov", "cobertura"],
     },
   },
 });
