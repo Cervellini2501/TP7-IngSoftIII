@@ -39,10 +39,25 @@ steps:
     npm test -- --coverage
   displayName: 'Ejecutar tests frontend'
 
-# 6) Frontend - pruebas E2E con Cypress
+# 6) Backend + Frontend - pruebas E2E con Cypress
 - script: |
-    cd frontend
+    echo "Levantando backend..."
+    cd backend
+    npm start &
+    BACKEND_PID=$!
+
+    # Espera breve para que el backend arranque
+    sleep 5
+
+    echo "Ejecutando pruebas E2E con Cypress..."
+    cd ../frontend
     npm run test:e2e
+    TEST_EXIT=$?
+
+    echo "Deteniendo backend..."
+    kill $BACKEND_PID || true
+
+    exit $TEST_EXIT
   displayName: 'Pruebas E2E frontend (Cypress)'
 
 # 7) SonarCloud - análisis con SonarScanner CLI
