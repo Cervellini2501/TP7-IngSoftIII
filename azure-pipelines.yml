@@ -33,13 +33,19 @@ steps:
     npm ci
   displayName: 'Instalar dependencias frontend'
 
-# 5) Frontend - tests + coverage
+# 5) Frontend - tests unitarios + coverage
 - script: |
     cd frontend
     npm test -- --coverage
   displayName: 'Ejecutar tests frontend'
 
-# 6) SonarCloud - análisis con SonarScanner CLI
+# 6) Frontend - pruebas E2E con Cypress
+- script: |
+    cd frontend
+    npm run test:e2e
+  displayName: 'Pruebas E2E frontend (Cypress)'
+
+# 7) SonarCloud - análisis con SonarScanner CLI
 - script: |
     set -e
 
