@@ -4,14 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+     "dev": "vite --port 5173 --strictPort true",
     "build": "vite build",
     "preview": "vite preview",
-
     "test": "vitest run",
     "test:watch": "vitest",
-
-    "cy:open": "cypress open",
     "cy:run": "cypress run",
     "test:e2e": "start-server-and-test dev http://localhost:5173 cy:run"
   },
