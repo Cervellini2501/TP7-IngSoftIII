@@ -39,7 +39,25 @@ steps:
     npm test -- --coverage
   displayName: 'Ejecutar tests frontend'
 
-# 6) Frontend - pruebas E2E con Cypress (no rompen el pipeline si fallan)
+# 6) Publicar cobertura backend en Azure DevOps
+- task: PublishCodeCoverageResults@2
+  displayName: 'Publicar Code Coverage (backend)'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/backend/coverage/cobertura-coverage.xml'
+    reportDirectory: '$(System.DefaultWorkingDirectory)/backend/coverage'
+    failIfCoverageEmpty: true
+
+# 7) Publicar cobertura frontend en Azure DevOps
+- task: PublishCodeCoverageResults@2
+  displayName: 'Publicar Code Coverage (frontend)'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/frontend/coverage/cobertura-coverage.xml'
+    reportDirectory: '$(System.DefaultWorkingDirectory)/frontend/coverage'
+    failIfCoverageEmpty: true
+
+# 8) Frontend - pruebas E2E con Cypress (no rompen el pipeline si fallan)
 - script: |
     cd frontend
 
@@ -57,7 +75,7 @@ steps:
     fi
   displayName: 'Pruebas E2E frontend (Cypress)'
 
-# 7) SonarCloud - análisis con SonarScanner CLI
+# 9) SonarCloud - análisis con SonarScanner CLI
 - script: |
     set -e
 
